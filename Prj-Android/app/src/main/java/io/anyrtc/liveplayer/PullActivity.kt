@@ -1,8 +1,10 @@
 package io.anyrtc.liveplayer
 
+import android.Manifest
 import android.animation.Animator
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -18,8 +20,10 @@ import org.webrtc.*
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 import android.view.animation.AccelerateDecelerateInterpolator
-
-
+import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import io.anyrtc.liveplayer.PushActivity.Companion
 
 
 class PullActivity : AppCompatActivity() {
@@ -30,10 +34,40 @@ class PullActivity : AppCompatActivity() {
     private val playStatus = PlayStatus()
     private var displayMode = ArLiveDef.ArLiveFillMode.ArLiveFillModeFit
     private val setAnimator = AnimatorSet()
+    companion object {
+        const val REQUEST_CODE_BLUETOOTH_CONNECT = 1 // 定义请求码
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
+        PullActivity.REQUEST_CODE_BLUETOOTH_CONNECT
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.BLUETOOTH_CONNECT), // 使用 arrayOf 代替 new String[]{...}
+                PullActivity.REQUEST_CODE_BLUETOOTH_CONNECT
+            )
+        }
+    }
+
+    // 蓝牙权限申请成功后操作
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == io.anyrtc.liveplayer.PullActivity.REQUEST_CODE_BLUETOOTH_CONNECT) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限被授予，可以执行需要BLUETOOTH_CONNECT权限的操作
+                startBluetoothFunctionality()
+            } else {
+                // 权限被拒绝，可以提示用户或者关闭某些功能
+                showPermissionDeniedMessage()
+            }
+        }
+    }
+
+    // 这个方法用于启动需要BLUETOOTH_CONNECT权限的功能
+    private fun startBluetoothFunctionality() {
+        // 你的蓝牙功能代码
         binding.playStatus = playStatus
         binding.root.statusPadding()
         immersive()
@@ -170,6 +204,11 @@ class PullActivity : AppCompatActivity() {
 
     }
 
+    // 这个方法用于显示权限请求的解释对话框
+    private fun showPermissionDeniedMessage() {
+        // 这里添加提示用户权限被拒绝的消息，例如使用Toast或Snackbar
+        Toast.makeText(this, "BLUETOOTH_CONNECT权限被拒绝，某些功能将不可用。", Toast.LENGTH_LONG).show()
+    }
     override fun onBackPressed() {
         ArLiveEngine.release()
         finish()

@@ -1,13 +1,17 @@
 package io.anyrtc.liveplayer
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import coil.ImageLoader
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
@@ -29,11 +33,39 @@ class PushActivity : BaseActivity() {
     private val pusher by lazy { liveEngine.createArLivePusher() }
     private var pushUrl = ""
     private var pushType = 0
+    companion object {
+        const val PUSH_REQUEST_CODE_BLUETOOTH_CONNECT = 2 // 定义请求码
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
         immersive(darkMode = false)
+        PUSH_REQUEST_CODE_BLUETOOTH_CONNECT
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.BLUETOOTH_CONNECT), // 使用 arrayOf 代替 new String[]{...}
+                PUSH_REQUEST_CODE_BLUETOOTH_CONNECT
+            )
+        }
+    }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PUSH_REQUEST_CODE_BLUETOOTH_CONNECT) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限被授予，可以执行需要BLUETOOTH_CONNECT权限的操作
+                startBluetoothFunctionality()
+            } else {
+                // 权限被拒绝，可以提示用户或者关闭某些功能
+                showPermissionDeniedMessage()
+            }
+        }
+    }
+
+    // 这个方法用于启动需要BLUETOOTH_CONNECT权限的功能
+    private fun startBluetoothFunctionality() {
+        // 这里添加启动蓝牙相关功能的代码
         pushType = intent.getIntExtra("pushType",0);
         val resolution = intent.getIntExtra("resolution",0)
         pushUrl = intent.getStringExtra("url").toString()
@@ -70,7 +102,7 @@ class PushActivity : BaseActivity() {
                 .build()
             binding.ivGif.load("https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fhbimg.b0.upaiyun.com%2F60ed9921abb8a968651aae697626dc816624cc4770c32-uwUmhP_fw658&refer=http%3A%2F%2Fhbimg.b0.upaiyun.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=jpeg?sec=1645166781&t=ff39058ea3e782746361d8b2bea68511",imageLoader)
             pusher.startScreenCapture()
-	        pusher.startMicrophone()
+            pusher.startMicrophone()
             pusher.startPush(pushUrl)
         }else{//自定义音视频采集
             pusher.enableCustomAudioCapture(true)
@@ -117,9 +149,13 @@ class PushActivity : BaseActivity() {
 
         }
         initView()
-
     }
 
+    // 这个方法用于显示权限被拒绝的消息
+    private fun showPermissionDeniedMessage() {
+        // 这里添加提示用户权限被拒绝的消息，例如使用Toast或Snackbar
+        Toast.makeText(this, "BLUETOOTH_CONNECT权限被拒绝，某些功能将不可用。", Toast.LENGTH_LONG).show()
+    }
     private fun initView(){
         binding.run {
             tvUrl.text = pushUrl
